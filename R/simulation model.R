@@ -2,34 +2,27 @@ library(deSolve)
 library(tidyverse)
 
 ### the ODE model
-# the published compartments Y2 and Y3 was originally separated into H2/H3 (hospitalised)
-# and Y2/Y3 (self isolation). To simulate the published model, make sure that
-# reduction_hosp and reduction_self have the same value
 covidmodel <- function(t, vars, parms) {
   with(as.list(c(vars, parms)), {
     foi <- 
       (beta1 * I1 +
          beta2 * I2m + beta3 * I3m +
-         beta2 * reduction_severe * I2s + reduction_severe * beta3 * I3s +
-         beta2 * reduction_hosp * H2 + beta3 * reduction_hosp * H3 +
-         beta2 * reduction_self * Y2 + beta3 * reduction_self * Y3) / (popsize)
+         beta2 * b_par * I2s + b_par * beta3 * I3s +
+         beta2 * r_par * Y2 + beta3 * r_par * Y3) / (popsize)
     return(
       list(
         c(
           dS = -foi * S,
           dE = foi * S - sigma * E,
           dI1 = sigma * E - gamma1 * I1,
-          dI2m = gamma1 * I1 * (1 - psevere) - gamma2 * I2m,
+          dI2m = gamma1 * I1 * (1 - p_par) - gamma2 * I2m,
           dI3m = gamma2 * I2m - gamma3 * I3m,
-          dI2s = gamma1 * I1 * psevere - (alpha + gamma2) * I2s,
+          dI2s = gamma1 * I1 * p_par - (alpha + gamma2) * I2s,
           dI3s = gamma2 * I2s - gamma3 * I3s,
-          dH2 = alpha * I2s * phospital - gamma2 * H2,
-          dH3 = gamma2 * H2 - gamma3 * H3,
-          dY2 = alpha * I2s * (1 - phospital) - gamma2 * Y2,
+          dY2 = alpha * I2s - gamma2 * Y2,
           dY3 = gamma2 * Y2 - gamma3 * Y3,
           dInf = foi * S,
-          dRep = alpha * I2s,
-          dHosp = alpha * I2s * phospital
+          dRep = alpha * I2s
         )
       )
     )
@@ -47,10 +40,8 @@ covidsim <- function(
   parameters = c(
     beta1 = 0.25, beta2 = 0.16, beta3 = 0.016,
     sigma = 1, gamma1 = 0.2, gamma2 = 0.14, gamma3 = 0.14,
-    alpha = 0.5,
-    psevere = 0.5, phospital = 0.2,
-    reduction_severe = 0.8, reduction_self = 0.01, reduction_hosp = 0.01,
-    start_dist = 60, end_dist = 108, reduction_dist = 1
+    alpha = 0.5, p_par = 0.5, b_par = 0.8, r_par = 0.01,
+    start_dist = 60, end_dist = 108, effect_dist = 1
   ),
   ...
 ) {
@@ -63,14 +54,12 @@ covidsim <- function(
     S = popsize, E = seedsize, I1 = 0,
     I2m = 0, I3m = 0,
     I2s = 0, I3s = 0,
-    H2 = 0, H3 = 0,
     Y2 = 0, Y3 = 0,
-    Infected = 0, Reported = 0, Hospital = 0
+    Infected = 0, Reported = 0
   )
   
   startparms <- c(popsize = popsize, parameters)
-  startparms["reduction_hosp"] <- startparms["reduction_severe"]
-  startparms["reduction_self"] <- startparms["reduction_severe"]
+  startparms["r_par"] <- startparms["b_par"]
   simres <- ode(
     y = initialstate,
     times = seq(0, burnintime, 1),
@@ -88,9 +77,9 @@ covidsim <- function(
   
   if(timewindow <= nodistparms["start_dist"]) return(simres)
   distparms <- nodistparms
-  distparms["beta1"] <- distparms["beta1"] * distparms["reduction_dist"]
-  distparms["beta2"] <- distparms["beta2"] * distparms["reduction_dist"]
-  distparms["beta3"] <- distparms["beta3"] * distparms["reduction_dist"]
+  distparms["beta1"] <- distparms["beta1"] * distparms["effect_dist"]
+  distparms["beta2"] <- distparms["beta2"] * distparms["effect_dist"]
+  distparms["beta3"] <- distparms["beta3"] * distparms["effect_dist"]
   simres <- rbind(
     head(simres, -1),
     ode(
@@ -142,8 +131,7 @@ plotscenarios <- function(
     group_by(scenario) %>%
     mutate(
       Infection = Infected - lag(Infected),
-      Reporting = Reported - lag(Reported),
-      Hospitalisation = Hospital - lag(Hospital)
+      Reporting = Reported - lag(Reported)
     ) %>%
     ungroup()
   allplots %>% ggplot(aes(x = time, y = Reporting, color = scenario)) +
@@ -181,8 +169,8 @@ arrowdata <- tibble(
 )
 plotscenarios(
   scenario1 = list(),
-  scenario2 = list(end_dist = 365, reduction_dist = 0.75, start_dist = 70, end_dist = 365),
-  scenario3 = list(reduction_dist = 0.5, start_dist = 80, end_dist = 200)
+  scenario2 = list(effect_dist = 0.75, start_dist = 70, end_dist = 365),
+  scenario3 = list(effect_dist = 0.5, start_dist = 80, end_dist = 200)
 )  +
   labs(x = "Months since transmission established", y = "Rate of cases being reported") +
   scale_color_discrete(labels = NULL) +
@@ -194,11 +182,11 @@ plotscenarios(
   theme_classic() +
   theme(text = element_text(size = 12)) +
   guides(color = FALSE)
-ggsave("Results/fig_d.tiff", units = "cm", width = 16, height = 10)
+ggsave("Results/fig_main.tiff", units = "cm", width = 16, height = 10)
 
 ### Doubling times for some parameter combinations
-simres <- covidsim(reduction_hosp = 1, reduction_self = 1, reduction_severe = 1)
+simres <- covidsim(r_par = 1, b_par = 1)
 10/(log2(simres[20,3]) - log2(simres[10,3]))  ###5.3
-simres <- covidsim(reduction_hosp = 0.8, reduction_self = 0.8, reduction_severe = 0.8)
+simres <- covidsim(r_par = 0.8, b_par = 0.8)
 10/(log2(simres[20,3]) - log2(simres[10,3])) ###5.6
 
