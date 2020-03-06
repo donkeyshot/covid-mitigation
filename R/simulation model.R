@@ -201,16 +201,4 @@ simres <- covidsim(reduction_hosp = 1, reduction_self = 1, reduction_severe = 1)
 10/(log2(simres[20,3]) - log2(simres[10,3]))  ###5.3
 simres <- covidsim(reduction_hosp = 0.8, reduction_self = 0.8, reduction_severe = 0.8)
 10/(log2(simres[20,3]) - log2(simres[10,3])) ###5.6
-simres <- covidsim(reduction_hosp = 1, reduction_self = 1, reduction_severe = 1, 
-                   gamma1 = 0.33, beta1 = 0.15, beta2 = 0.26, beta3 = 0.026, sigma = 0.33)
-10/(log2(simres[20,3]) - log2(simres[10,3])) ###7.5
-simres <- covidsim(reduction_hosp = 0.8, reduction_self = 0.8, reduction_severe = 0.8, 
-                   gamma1 = 0.33, beta1 = 0.15, beta2 = 0.26, beta3 = 0.026, sigma = 0.33)
-10/(log2(simres[20,3]) - log2(simres[10,3]))  ###8.3
-simres <- covidsim(reduction_hosp = 1, reduction_self = 1, reduction_severe = 1, 
-                   gamma1 = 0.33, beta1 = 0.23, beta2 = 0.23, beta3 = 0.023, sigma = 0.33)
-10/(log2(simres[20,3]) - log2(simres[10,3]))  ###6.9
-simres <- covidsim(reduction_hosp = 0.8, reduction_self = 0.8, reduction_severe = 0.8, 
-                   gamma1 = 0.33, beta1 = 0.23, beta2 = 0.23, beta3 = 0.023, sigma = 0.33)
-10/(log2(simres[20,3]) - log2(simres[10,3]))  ###7.5
 
