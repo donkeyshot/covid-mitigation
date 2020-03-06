@@ -2,6 +2,9 @@ library(deSolve)
 library(tidyverse)
 
 ### the ODE model
+# the published compartments Y2 and Y3 was originally separated into H2/H3 (hospitalised)
+# and Y2/Y3 (self isolation). To simulate the published model, make sure that
+# reduction_hosp and reduction_self have the same value
 covidmodel <- function(t, vars, parms) {
   with(as.list(c(vars, parms)), {
     foi <- 
